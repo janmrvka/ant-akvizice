@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -15,6 +15,7 @@ import {
   Building2,
   MapPin,
   Loader2,
+  ShieldAlert,
 } from "lucide-react";
 import AssigneeSelector from "./AssigneeSelector";
 
@@ -71,6 +72,29 @@ function DaysAgo({ date }) {
 export default function LeadCard({ lead, salespeople, onUpdate }) {
   const [enriching, setEnriching] = useState(false);
   const [localLead, setLocalLead] = useState(lead);
+  const classifiedRef = useRef(false);
+
+  // Lazy klasifikace — spustí se jednou při prvním zobrazení karty
+  useEffect(() => {
+    if (classifiedRef.current) return;
+    if (localLead.is_competitor !== null && localLead.is_competitor !== undefined) return;
+    classifiedRef.current = true;
+
+    fetch(`/api/classify/${localLead.id}`, { method: "POST" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setLocalLead((prev) => ({
+            ...prev,
+            is_competitor: data.is_competitor,
+            company_type: data.company_type,
+            competitor_reason: data.competitor_reason,
+          }));
+          onUpdate?.({ ...localLead, ...data });
+        }
+      })
+      .catch(() => {});
+  }, [localLead.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleEnrich() {
     setEnriching(true);
@@ -144,6 +168,22 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${SOURCE_COLORS[localLead.source] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
                   {localLead.source}
                 </span>
+                {localLead.company_type && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400">
+                    {localLead.company_type}
+                  </span>
+                )}
+                {localLead.is_competitor === true && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400">
+                        <ShieldAlert className="w-3 h-3" />
+                        Konkurence
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{localLead.competitor_reason || "Marketingová agentura / studio"}</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
               <p className="text-sm text-muted-foreground mt-0.5">{localLead.title}</p>
               {localLead.city && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Search, X } from "lucide-react";
+import { Search, X, ShieldOff, Shield, Eye } from "lucide-react";
 
 const SOURCES = ["jobs.cz", "prace.cz", "startupjobs.cz"];
 const STATUSES = [
@@ -18,6 +18,30 @@ const REGION_GROUPS = [
   { value: "Zbytek ČR", label: "Zbytek ČR", color: "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200" },
 ];
 
+const COMPETITOR_MODES = [
+  {
+    value: "hide",
+    label: "Skrýt konkurenci",
+    icon: ShieldOff,
+    active: "bg-green-100 text-green-700 border-green-300",
+    inactive: "bg-background text-muted-foreground border-border hover:bg-muted",
+  },
+  {
+    value: "only",
+    label: "Jen konkurence",
+    icon: Shield,
+    active: "bg-red-100 text-red-700 border-red-300",
+    inactive: "bg-background text-muted-foreground border-border hover:bg-muted",
+  },
+  {
+    value: "all",
+    label: "Zobrazit vše",
+    icon: Eye,
+    active: "bg-yellow-100 text-yellow-700 border-yellow-300",
+    inactive: "bg-background text-muted-foreground border-border hover:bg-muted",
+  },
+];
+
 export default function Filters({ filters, salespeople, onChange }) {
   function set(key, value) {
     onChange({ ...filters, [key]: value, page: 1 });
@@ -28,16 +52,48 @@ export default function Filters({ filters, salespeople, onChange }) {
   }
 
   function reset() {
-    onChange({ page: 1 });
+    onChange({ page: 1, competitor: "hide" });
   }
 
-  const hasFilters = filters.search || filters.status || filters.source || filters.assignee || filters.regionGroup;
+  const competitor = filters.competitor || "hide";
+  const hasFilters = filters.search || filters.status || filters.source || filters.assignee || filters.regionGroup || competitor !== "hide";
 
   return (
     <div className="space-y-3">
+      {/* Competitor toggle */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Konkurence:</span>
+        {COMPETITOR_MODES.map((m) => {
+          const Icon = m.icon;
+          const isActive = competitor === m.value;
+          return (
+            <button
+              key={m.value}
+              onClick={() => set("competitor", m.value)}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${
+                isActive ? m.active : m.inactive
+              }`}
+            >
+              <Icon className="w-3 h-3" />
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Region tlačítka */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-muted-foreground font-medium">Kraj:</span>
+        <button
+          onClick={() => set("regionGroup", undefined)}
+          className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${
+            !filters.regionGroup
+              ? "bg-foreground text-background border-foreground"
+              : "bg-background text-muted-foreground border-border hover:bg-muted"
+          }`}
+        >
+          Všechny kraje
+        </button>
         {REGION_GROUPS.map((r) => (
           <button
             key={r.value}

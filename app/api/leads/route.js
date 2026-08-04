@@ -9,6 +9,8 @@ export async function GET(request) {
   const source = searchParams.get("source");
   const search = searchParams.get("search");
   const regionGroup = searchParams.get("regionGroup"); // "Praha" | "Plzeňský kraj" | "Zbytek ČR"
+  // competitor: "hide" (default) | "only" | "all"
+  const competitor = searchParams.get("competitor") || "hide";
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
   const offset = (page - 1) * limit;
@@ -60,6 +62,14 @@ export async function GET(request) {
       params.push(q, q, q);
       idx += 2;
     }
+
+    if (competitor === "hide") {
+      // skrýt potvrzenou konkurenci (is_competitor = true), neklasifilované zobrazit
+      conditions.push(`(l.is_competitor IS NULL OR l.is_competitor = false)`);
+    } else if (competitor === "only") {
+      conditions.push(`l.is_competitor = true`);
+    }
+    // competitor === "all" — žádná podmínka, vše viditelné
 
     const where = conditions.join(" AND ");
 
