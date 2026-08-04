@@ -5,7 +5,11 @@ const PASS = process.env.BASIC_AUTH_PASSWORD || "akvizice2025";
 
 export function middleware(request) {
   const path = request.nextUrl.pathname;
-  if (path.startsWith("/api/scrape") || path.startsWith("/api/init")) {
+  if (
+    path.startsWith("/api/scrape") ||
+    path.startsWith("/api/init") ||
+    path.startsWith("/api/backfill-locations")
+  ) {
     return NextResponse.next();
   }
 
