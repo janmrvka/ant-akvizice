@@ -4,7 +4,8 @@ const USER = "ant";
 const PASS = process.env.BASIC_AUTH_PASSWORD || "akvizice2025";
 
 export function middleware(request) {
-  if (request.nextUrl.pathname.startsWith("/api/scrape")) {
+  const path = request.nextUrl.pathname;
+  if (path.startsWith("/api/scrape") || path.startsWith("/api/init")) {
     return NextResponse.next();
   }
 
