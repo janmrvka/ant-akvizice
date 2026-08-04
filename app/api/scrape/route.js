@@ -47,7 +47,7 @@ export async function GET(request) {
       WHERE id = ${runId}
     `;
 
-    return NextResponse.json({ ok: true, new_leads: newCount, errors });
+    return NextResponse.json({ ok: true, new_leads: newCount, total_found: leads.length, errors });
   } catch (error) {
     await sql`
       UPDATE scrape_runs SET status = 'error', error = ${error.message}
