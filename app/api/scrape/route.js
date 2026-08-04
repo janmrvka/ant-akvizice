@@ -20,25 +20,19 @@ export async function GET(request) {
     for (const lead of leads) {
       if (!lead.company || !lead.url) continue;
 
-      const domain = lead.company_domain || null;
-
       const existing = await sql`
-        SELECT id FROM leads
-        WHERE url = ${lead.url}
-           OR (company_domain IS NOT NULL AND company_domain = ${domain})
-        LIMIT 1
+        SELECT id FROM leads WHERE url = ${lead.url} LIMIT 1
       `;
       if (existing.length > 0) continue;
 
       await sql`
-        INSERT INTO leads (company, title, description, url, source, company_domain, status)
+        INSERT INTO leads (company, title, description, url, source, status)
         VALUES (
           ${lead.company},
           ${lead.title},
           ${lead.description || null},
           ${lead.url},
           ${lead.source},
-          ${domain},
           'new'
         )
       `;
