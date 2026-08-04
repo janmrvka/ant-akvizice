@@ -4,7 +4,6 @@ const USER = "ant";
 const PASS = process.env.BASIC_AUTH_PASSWORD || "akvizice2025";
 
 export function middleware(request) {
-  // API cron endpoint nepotřebuje basic auth
   if (request.nextUrl.pathname.startsWith("/api/scrape")) {
     return NextResponse.next();
   }
@@ -14,10 +13,16 @@ export function middleware(request) {
   if (auth) {
     const [scheme, encoded] = auth.split(" ");
     if (scheme === "Basic" && encoded) {
-      const decoded = atob(encoded);
-      const [user, pass] = decoded.split(":");
-      if (user === USER && pass === PASS) {
-        return NextResponse.next();
+      try {
+        const decoded = Buffer.from(encoded, "base64").toString("utf-8");
+        const colonIndex = decoded.indexOf(":");
+        const user = decoded.slice(0, colonIndex);
+        const pass = decoded.slice(colonIndex + 1);
+        if (user === USER && pass === PASS) {
+          return NextResponse.next();
+        }
+      } catch {
+        // invalid base64
       }
     }
   }
