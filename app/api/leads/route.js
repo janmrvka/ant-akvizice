@@ -5,9 +5,10 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const assignee = searchParams.get("assignee");
   const status = searchParams.get("status");
-  const age = searchParams.get("age"); // days
+  const age = searchParams.get("age");
   const source = searchParams.get("source");
   const search = searchParams.get("search");
+  const regionGroup = searchParams.get("regionGroup"); // "Praha" | "Plzeňský kraj" | "Zbytek ČR"
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
   const offset = (page - 1) * limit;
@@ -38,6 +39,19 @@ export async function GET(request) {
 
     if (age) {
       conditions.push(`l.found_at >= NOW() - INTERVAL '${parseInt(age)} days'`);
+    }
+
+    if (regionGroup) {
+      if (regionGroup === "Praha") {
+        conditions.push(`l.region = $${idx++}`);
+        params.push("Praha");
+      } else if (regionGroup === "Plzeňský kraj") {
+        conditions.push(`l.region = $${idx++}`);
+        params.push("Plzeňský kraj");
+      } else if (regionGroup === "Zbytek ČR") {
+        conditions.push(`l.region NOT IN ($${idx++}, $${idx++}) OR l.region IS NULL`);
+        params.push("Praha", "Plzeňský kraj");
+      }
     }
 
     if (search) {

@@ -13,6 +13,7 @@ import {
   Zap,
   Clock,
   Building2,
+  MapPin,
   Loader2,
 } from "lucide-react";
 import AssigneeSelector from "./AssigneeSelector";
@@ -145,6 +146,12 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
                 </span>
               </div>
               <p className="text-sm text-muted-foreground mt-0.5">{localLead.title}</p>
+              {localLead.city && (
+                <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                  <MapPin className="w-3 h-3" />
+                  {localLead.city}
+                </p>
+              )}
             </div>
             <a
               href={localLead.url}

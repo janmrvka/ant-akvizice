@@ -26,13 +26,15 @@ export async function GET(request) {
       if (existing.length > 0) continue;
 
       await sql`
-        INSERT INTO leads (company, title, description, url, source, status)
+        INSERT INTO leads (company, title, description, url, source, city, region, status)
         VALUES (
           ${lead.company},
           ${lead.title},
           ${lead.description || null},
           ${lead.url},
           ${lead.source},
+          ${lead.city || null},
+          ${lead.region || null},
           'new'
         )
       `;
