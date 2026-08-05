@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Plus, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Check, X, Pencil } from "lucide-react";
 import Link from "next/link";
 
 const PRESET_COLORS = [
@@ -13,6 +13,120 @@ const PRESET_COLORS = [
   "#f97316", "#eab308", "#22c55e", "#14b8a6",
   "#3b82f6", "#0ea5e9",
 ];
+
+function ColorPicker({ value, onChange }) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {PRESET_COLORS.map((color) => (
+        <button
+          key={color}
+          type="button"
+          onClick={() => onChange(color)}
+          className={`w-7 h-7 rounded-full transition-transform ${
+            value === color ? "scale-125 ring-2 ring-offset-1 ring-foreground" : ""
+          }`}
+          style={{ backgroundColor: color }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PersonRow({ person, onSaved, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(person.name);
+  const [initials, setInitials] = useState(person.initials);
+  const [color, setColor] = useState(person.color);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    await fetch(`/api/salespeople/${person.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name.trim(),
+        initials: initials.trim().toUpperCase().slice(0, 3),
+        color,
+      }),
+    });
+    setSaving(false);
+    setEditing(false);
+    onSaved();
+  }
+
+  function cancel() {
+    setName(person.name);
+    setInitials(person.initials);
+    setColor(person.color);
+    setEditing(false);
+  }
+
+  const isDefault = person.name === "Nepřiřazeno";
+
+  if (editing) {
+    return (
+      <div className="p-3 border border-primary rounded-lg bg-card space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Jméno</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Zkratka (max 3)</Label>
+            <Input
+              value={initials}
+              onChange={(e) => setInitials(e.target.value.toUpperCase().slice(0, 3))}
+              maxLength={3}
+              className="h-8 text-sm"
+            />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Barva</Label>
+          <ColorPicker value={color} onChange={setColor} />
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={save} disabled={saving || !name.trim() || !initials.trim()}>
+            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+            Uložit
+          </Button>
+          <Button size="sm" variant="ghost" onClick={cancel}>
+            <X className="w-3 h-3" />
+            Zrušit
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 p-3 border border-border rounded-lg bg-card">
+      <div
+        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+        style={{ backgroundColor: person.color }}
+      >
+        {person.initials}
+      </div>
+      <span className="flex-1 font-medium">{person.name}</span>
+      {!isDefault && (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(person.id)}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const [salespeople, setSalespeople] = useState([]);
@@ -42,7 +156,7 @@ export default function SettingsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: newName.trim(),
-        initials: newInitials.trim().toUpperCase().slice(0, 2),
+        initials: newInitials.trim().toUpperCase().slice(0, 3),
         color: newColor,
       }),
     });
@@ -79,7 +193,7 @@ export default function SettingsPage() {
         <section>
           <h2 className="text-lg font-semibold mb-1">Obchodníci</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Přidej členy týmu pro přiřazování leadů.
+            Přidej a uprav členy týmu pro přiřazování leadů.
           </p>
 
           {loading ? (
@@ -87,28 +201,12 @@ export default function SettingsPage() {
           ) : (
             <div className="space-y-2 mb-6">
               {salespeople.map((person) => (
-                <div
+                <PersonRow
                   key={person.id}
-                  className="flex items-center gap-3 p-3 border border-border rounded-lg bg-card"
-                >
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                    style={{ backgroundColor: person.color }}
-                  >
-                    {person.initials}
-                  </div>
-                  <span className="flex-1 font-medium">{person.name}</span>
-                  {person.name !== "Nepřiřazeno" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(person.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
+                  person={person}
+                  onSaved={fetchSalespeople}
+                  onDelete={handleDelete}
+                />
               ))}
             </div>
           )}
@@ -127,30 +225,18 @@ export default function SettingsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Iniciály (2 znaky)</Label>
+                <Label>Zkratka (max 3)</Label>
                 <Input
                   value={newInitials}
-                  onChange={(e) => setNewInitials(e.target.value)}
+                  onChange={(e) => setNewInitials(e.target.value.toUpperCase().slice(0, 3))}
                   placeholder="JN"
-                  maxLength={2}
+                  maxLength={3}
                 />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label>Barva</Label>
-              <div className="flex items-center gap-2 flex-wrap">
-                {PRESET_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setNewColor(color)}
-                    className={`w-7 h-7 rounded-full transition-transform ${
-                      newColor === color ? "scale-125 ring-2 ring-offset-1 ring-foreground" : ""
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
+              <ColorPicker value={newColor} onChange={setNewColor} />
             </div>
             <Button type="submit" disabled={saving || !newName.trim() || !newInitials.trim()}>
               {saving ? (

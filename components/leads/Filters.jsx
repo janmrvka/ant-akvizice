@@ -52,11 +52,11 @@ export default function Filters({ filters, salespeople, onChange }) {
   }
 
   function reset() {
-    onChange({ page: 1, competitor: "hide" });
+    onChange({ page: 1, competitor: "all" });
   }
 
-  const competitor = filters.competitor || "hide";
-  const hasFilters = filters.search || filters.status || filters.source || filters.assignee || filters.regionGroup || competitor !== "hide";
+  const competitor = filters.competitor || "all";
+  const hasFilters = filters.search || filters.status || filters.source || filters.assignee || filters.regionGroup || competitor !== "all";
 
   return (
     <div className="space-y-3">

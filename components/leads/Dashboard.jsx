@@ -13,7 +13,7 @@ const PAGE_SIZE = 20;
 export default function Dashboard() {
   const [leads, setLeads] = useState([]);
   const [salespeople, setSalespeople] = useState([]);
-  const [filters, setFilters] = useState({ page: 1 });
+  const [filters, setFilters] = useState({ page: 1, competitor: "all" });
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
