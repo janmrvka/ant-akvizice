@@ -16,15 +16,19 @@ export async function POST(request, { params }) {
 
     const updated = await sql`
       UPDATE leads SET
-        decision_maker = ${enriched.decision_maker || null},
-        contact = ${enriched.contact || null},
-        linkedin_url = ${enriched.linkedin_url || null},
-        signal = ${enriched.signal || null},
-        why_now = ${enriched.why_now || null},
-        company_info = ${enriched.company_info || null},
-        match_score = ${enriched.match_score ?? null},
-        enriched_at = NOW(),
-        updated_at = NOW()
+        decision_maker  = ${enriched.decision_maker || null},
+        contact         = ${enriched.contact || null},
+        linkedin_url    = ${enriched.linkedin_url || null},
+        signal          = ${enriched.signal || null},
+        why_now         = ${enriched.why_now || null},
+        company_info    = ${enriched.company_info || null},
+        match_score     = ${enriched.match_score ?? null},
+        ico             = ${enriched.ico || null},
+        company_web     = ${enriched.company_web || null},
+        company_summary = ${enriched.company_summary || null},
+        contacts        = ${enriched.contacts ? JSON.stringify(enriched.contacts) : null},
+        enriched_at     = NOW(),
+        updated_at      = NOW()
       WHERE id = ${parseInt(id)}
       RETURNING *
     `;
