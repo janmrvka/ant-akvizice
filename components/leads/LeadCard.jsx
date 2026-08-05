@@ -13,8 +13,6 @@ import {
   Clock,
   MapPin,
   Loader2,
-  ShieldAlert,
-  ShieldOff,
   ChevronDown,
   ChevronUp,
   Globe,
@@ -236,12 +234,6 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${SOURCE_COLORS[localLead.source] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
                   {localLead.source}
                 </span>
-                {localLead.is_competitor === true && (
-                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400">
-                    <ShieldAlert className="w-3 h-3" />
-                    Konkurence
-                  </span>
-                )}
               </div>
               <a href={localLead.url} target="_blank" rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors shrink-0 mt-0.5">
@@ -330,18 +322,21 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
                     <span
                       role="button"
                       onClick={handleToggleCompetitor}
-                      className={`inline-flex items-center justify-center h-7 w-7 rounded-md border text-xs transition-colors cursor-pointer ${
+                      className={`inline-flex items-center gap-1 h-7 px-2 rounded-md border text-xs font-medium transition-colors cursor-pointer ${
                         localLead.is_competitor
-                          ? "bg-destructive text-destructive-foreground border-destructive hover:bg-destructive/90"
-                          : "border-border bg-background hover:bg-muted"
+                          ? "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
+                          : "border-dashed border-border text-muted-foreground/40 hover:text-muted-foreground hover:border-border"
                       }`}
                     >
-                      {marking ? <Loader2 className="w-3 h-3 animate-spin" /> :
-                        localLead.is_competitor ? <ShieldOff className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
+                      {marking
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : localLead.is_competitor
+                          ? "Konkurence"
+                          : "Konkurence?"}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {localLead.is_competitor ? "Odznačit jako konkurenci" : "Označit jako konkurenci"}
+                    {localLead.is_competitor ? "Klikni pro odznačení" : "Klikni pro označení jako konkurence"}
                   </TooltipContent>
                 </Tooltip>
                 <select
