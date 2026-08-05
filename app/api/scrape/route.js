@@ -25,8 +25,13 @@ export async function GET(request) {
       `;
       if (existing.length > 0) continue;
 
+      const competitorRow = await sql`
+        SELECT 1 FROM competitor_companies WHERE company = ${lead.company} LIMIT 1
+      `;
+      const isCompetitor = competitorRow.length > 0;
+
       await sql`
-        INSERT INTO leads (company, title, description, url, source, city, region, status)
+        INSERT INTO leads (company, title, description, url, source, city, region, status, is_competitor, competitor_reason)
         VALUES (
           ${lead.company},
           ${lead.title},
@@ -35,7 +40,9 @@ export async function GET(request) {
           ${lead.source},
           ${lead.city || null},
           ${lead.region || null},
-          'new'
+          'new',
+          ${isCompetitor || null},
+          ${isCompetitor ? "Ručně označeno jako konkurence" : null}
         )
       `;
       newCount++;
