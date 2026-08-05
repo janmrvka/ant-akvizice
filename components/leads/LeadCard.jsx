@@ -315,17 +315,19 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
                   </Button>
                 )}
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={localLead.is_competitor ? "destructive" : "outline"}
-                      size="sm"
+                  <TooltipTrigger>
+                    <span
+                      role="button"
                       onClick={handleToggleCompetitor}
-                      disabled={marking}
-                      className="text-xs h-7"
+                      className={`inline-flex items-center justify-center h-7 w-7 rounded-md border text-xs transition-colors cursor-pointer ${
+                        localLead.is_competitor
+                          ? "bg-destructive text-destructive-foreground border-destructive hover:bg-destructive/90"
+                          : "border-border bg-background hover:bg-muted"
+                      }`}
                     >
                       {marking ? <Loader2 className="w-3 h-3 animate-spin" /> :
                         localLead.is_competitor ? <ShieldOff className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
-                    </Button>
+                    </span>
                   </TooltipTrigger>
                   <TooltipContent>
                     {localLead.is_competitor ? "Odznačit jako konkurenci" : "Označit jako konkurenci"}
