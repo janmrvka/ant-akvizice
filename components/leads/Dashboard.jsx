@@ -34,7 +34,7 @@ export default function Dashboard() {
       if (filters.source) params.set("source", filters.source);
       if (filters.assignee) params.set("assignee", filters.assignee);
       if (filters.regionGroup) params.set("regionGroup", filters.regionGroup);
-      params.set("competitor", filters.competitor || "hide");
+      params.set("competitor", filters.competitor || "all");
       params.set("page", filters.page || 1);
       params.set("limit", PAGE_SIZE);
 
