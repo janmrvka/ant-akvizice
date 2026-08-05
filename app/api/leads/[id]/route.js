@@ -48,16 +48,17 @@ export async function PATCH(request, { params }) {
       .join(", ");
     const values = [parseInt(id), ...Object.values(updates)];
 
-    const result = await sql(
+    const result = await sql.query(
       `UPDATE leads SET ${setClauses}, updated_at = NOW() WHERE id = $1 RETURNING *`,
       values
     );
 
-    if (result.length === 0) {
+    const rows = Array.isArray(result) ? result : result.rows ?? [];
+    if (rows.length === 0) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
-    return NextResponse.json(result[0]);
+    return NextResponse.json(rows[0]);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
