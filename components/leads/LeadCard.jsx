@@ -146,8 +146,9 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
     });
     if (res.ok) {
       const updated = await res.json();
-      setLocalLead(updated);
-      onUpdate?.(updated);
+      const merged = { ...localLead, ...updated };
+      setLocalLead(merged);
+      onUpdate?.(merged);
     }
   }
 
@@ -159,8 +160,18 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
     });
     if (res.ok) {
       const updated = await res.json();
-      setLocalLead(updated);
-      onUpdate?.(updated);
+      // PATCH nevrací JOIN na salespeople — doplnit ručně z props
+      const assignee = salespeople?.find((p) => p.id === assignee_id);
+      const merged = {
+        ...localLead,
+        ...updated,
+        assignee_id: assignee_id ?? null,
+        assignee_name: assignee?.name ?? null,
+        assignee_color: assignee?.color ?? null,
+        assignee_initials: assignee?.initials ?? null,
+      };
+      setLocalLead(merged);
+      onUpdate?.(merged);
     }
   }
 
