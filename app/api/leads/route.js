@@ -47,12 +47,12 @@ export async function GET(request) {
       if (regionGroup === "Praha") {
         conditions.push(`l.region = $${idx++}`);
         params.push("Praha");
-      } else if (regionGroup === "Plzeňský kraj") {
-        conditions.push(`l.region = $${idx++}`);
-        params.push("Plzeňský kraj");
+      } else if (regionGroup === "Západní Čechy") {
+        conditions.push(`l.region IN ($${idx++}, $${idx++})`);
+        params.push("Plzeňský kraj", "Karlovarský kraj");
       } else if (regionGroup === "Zbytek ČR") {
-        conditions.push(`l.region NOT IN ($${idx++}, $${idx++}) OR l.region IS NULL`);
-        params.push("Praha", "Plzeňský kraj");
+        conditions.push(`l.region NOT IN ($${idx++}, $${idx++}, $${idx++}) OR l.region IS NULL`);
+        params.push("Praha", "Plzeňský kraj", "Karlovarský kraj");
       }
     }
 

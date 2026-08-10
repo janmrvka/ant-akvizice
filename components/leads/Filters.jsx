@@ -13,7 +13,7 @@ const STATUSES = [
 ];
 
 const REGION_GROUPS = [
-  { value: "Plzeňský kraj", label: "Plzeňský kraj", color: "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" },
+  { value: "Západní Čechy", label: "Západní Čechy", color: "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200" },
   { value: "Praha", label: "Praha", color: "bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200" },
   { value: "Zbytek ČR", label: "Zbytek ČR", color: "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200" },
 ];
