@@ -39,6 +39,12 @@ export async function GET(request) {
         `;
         updated++;
       } else {
+        // Inzerát expiroval — označ jako expired aby ho příští běh přeskočil
+        await sql`
+          UPDATE leads
+          SET job_detail = 'expired', detail_fetched_at = NOW()
+          WHERE id = ${lead.id}
+        `;
         failed++;
         errors.push(`${lead.id}: ${lead.url}`);
       }

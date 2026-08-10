@@ -193,7 +193,7 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
   }
 
   const isEnriched = !!localLead.enriched_at;
-  const hasDetail = !!localLead.job_detail;
+  const hasDetail = !!localLead.job_detail && localLead.job_detail !== "expired";
   const isOld = Math.floor((Date.now() - new Date(localLead.found_at).getTime()) / 86400000) > 30;
 
   // Kontakty — parsovat z JSON nebo prázdné pole
