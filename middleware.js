@@ -8,7 +8,8 @@ export function middleware(request) {
   if (
     path.startsWith("/api/scrape") ||
     path.startsWith("/api/init") ||
-    path.startsWith("/api/backfill-locations")
+    path.startsWith("/api/backfill-locations") ||
+    path.startsWith("/api/backfill-details")
   ) {
     return NextResponse.next();
   }

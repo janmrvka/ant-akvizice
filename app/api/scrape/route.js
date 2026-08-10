@@ -1,5 +1,6 @@
 import sql from "@/lib/db";
 import { scrapeAll } from "@/lib/scrapers/index.js";
+import { fetchJobDetail } from "@/lib/scrapers/jobs-cz.js";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
@@ -30,8 +31,11 @@ export async function GET(request) {
       `;
       const isCompetitor = competitorRow.length > 0;
 
+      // Stáhni detail inzerátu (text) pro archivaci — inzeráty expirují
+      const jobDetail = lead.source === "jobs.cz" ? await fetchJobDetail(lead.url) : null;
+
       await sql`
-        INSERT INTO leads (company, title, description, url, source, city, region, status, is_competitor, competitor_reason)
+        INSERT INTO leads (company, title, description, url, source, city, region, status, is_competitor, competitor_reason, job_detail, detail_fetched_at)
         VALUES (
           ${lead.company},
           ${lead.title},
@@ -42,7 +46,9 @@ export async function GET(request) {
           ${lead.region || null},
           'new',
           ${isCompetitor || null},
-          ${isCompetitor ? "Ručně označeno jako konkurence" : null}
+          ${isCompetitor ? "Ručně označeno jako konkurence" : null},
+          ${jobDetail},
+          ${jobDetail ? new Date().toISOString() : null}
         )
       `;
       newCount++;

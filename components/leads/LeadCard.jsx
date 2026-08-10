@@ -20,6 +20,7 @@ import {
   User,
   Building2,
   FileText,
+  ScrollText,
 } from "lucide-react";
 import AssigneeSelector from "./AssigneeSelector";
 
@@ -192,6 +193,7 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
   }
 
   const isEnriched = !!localLead.enriched_at;
+  const hasDetail = !!localLead.job_detail;
   const isOld = Math.floor((Date.now() - new Date(localLead.found_at).getTime()) / 86400000) > 30;
 
   // Kontakty — parsovat z JSON nebo prázdné pole
@@ -348,7 +350,7 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
                     <option key={value} value={value}>{label}</option>
                   ))}
                 </select>
-                {isEnriched && (
+                {(isEnriched || hasDetail) && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -367,7 +369,7 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
 
       {/* ── Rozbalovací detail ── */}
       <AnimatePresence initial={false}>
-        {expanded && isEnriched && (
+        {expanded && (isEnriched || hasDetail) && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -425,9 +427,27 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
                 </div>
               )}
 
-              {/* Žádné kontakty */}
-              {contacts.length === 0 && (
+              {/* Žádné kontakty po enrichmentu */}
+              {isEnriched && contacts.length === 0 && (
                 <p className="text-sm text-muted-foreground italic">Kontaktní osoby nebyly nalezeny.</p>
+              )}
+
+              {/* Text inzerátu — archiv pro případ expirace */}
+              {localLead.job_detail && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <ScrollText className="w-3.5 h-3.5" />
+                    Text inzerátu
+                    {localLead.detail_fetched_at && (
+                      <span className="font-normal normal-case text-muted-foreground/60 ml-1">
+                        (staženo {new Date(localLead.detail_fetched_at).toLocaleDateString("cs-CZ")})
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto pr-2">
+                    {localLead.job_detail}
+                  </p>
+                </div>
               )}
             </div>
           </motion.div>
