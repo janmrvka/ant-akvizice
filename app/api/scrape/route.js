@@ -1,6 +1,7 @@
 import sql from "@/lib/db";
 import { scrapeAll } from "@/lib/scrapers/index.js";
 import { fetchJobDetail } from "@/lib/scrapers/jobs-cz.js";
+import { classifyTitle, pickAssignee, getUnwantedAssigneeId } from "@/lib/positions.js";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
@@ -16,6 +17,8 @@ export async function GET(request) {
 
   try {
     const { leads, errors } = await scrapeAll();
+    const categories = await sql`SELECT * FROM position_categories`;
+    const unwantedAssigneeId = await getUnwantedAssigneeId(sql);
 
     let newCount = 0;
     for (const lead of leads) {
@@ -26,16 +29,22 @@ export async function GET(request) {
       `;
       if (existing.length > 0) continue;
 
-      const competitorRow = await sql`
-        SELECT 1 FROM competitor_companies WHERE company = ${lead.company} LIMIT 1
+      // Firma se štítkem s varováním (agentura, konkurence) = rovnou "nechceme"
+      const unwanted = await sql`
+        SELECT 1 FROM company_tag_links k JOIN company_tags t ON t.id = k.tag_id
+        WHERE t.warning AND k.company_key = lower(btrim(${lead.company})) LIMIT 1
       `;
-      const isCompetitor = competitorRow.length > 0;
+
+      // Kategorie pozice + předpřiřazení člověka podle kategorie
+      const positionIds = classifyTitle(lead.title, categories);
+      const assigneeId =
+        unwanted.length > 0 && unwantedAssigneeId ? unwantedAssigneeId : pickAssignee(positionIds, categories);
 
       // Stáhni detail inzerátu (text) pro archivaci — inzeráty expirují
       const jobDetail = lead.source === "jobs.cz" ? await fetchJobDetail(lead.url) : null;
 
       await sql`
-        INSERT INTO leads (company, title, description, url, source, city, region, status, is_competitor, competitor_reason, job_detail, detail_fetched_at)
+        INSERT INTO leads (company, title, description, url, source, city, region, status, position_ids, assignee_id, assignee_auto, job_detail, detail_fetched_at)
         VALUES (
           ${lead.company},
           ${lead.title},
@@ -44,9 +53,10 @@ export async function GET(request) {
           ${lead.source},
           ${lead.city || null},
           ${lead.region || null},
-          'new',
-          ${isCompetitor || null},
-          ${isCompetitor ? "Ručně označeno jako konkurence" : null},
+          ${unwanted.length > 0 ? "unwanted" : "new"},
+          ${positionIds},
+          ${assigneeId},
+          ${assigneeId != null},
           ${jobDetail},
           ${jobDetail ? new Date().toISOString() : null}
         )

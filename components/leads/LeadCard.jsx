@@ -21,8 +21,14 @@ import {
   Building2,
   FileText,
   ScrollText,
+  AlertTriangle,
+  StickyNote,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import AssigneeSelector from "./AssigneeSelector";
+import TagPicker from "./TagPicker";
 
 const STATUS_LABELS = {
   new: "Nový",
@@ -30,6 +36,7 @@ const STATUS_LABELS = {
   in_progress: "Probíhá",
   won: "Uzavřen",
   lost: "Zamítnut",
+  unwanted: "NE – neoslovovat",
 };
 
 const STATUS_COLORS = {
@@ -38,6 +45,7 @@ const STATUS_COLORS = {
   in_progress: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   won: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   lost: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
+  unwanted: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
 const SOURCE_COLORS = {
@@ -116,18 +124,109 @@ function ContactCard({ contact }) {
   );
 }
 
-export default function LeadCard({ lead, salespeople, onUpdate }) {
+function CompanyNote({ company, note, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(note || "");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    const res = await fetch("/api/company-notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ company, note: text }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      onSaved(data.note);
+      setEditing(false);
+    }
+    setSaving(false);
+  }
+
+  if (editing) {
+    return (
+      <div className="mt-2 space-y-1.5">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={3}
+          autoFocus
+          placeholder="Poznámka k firmě — platí pro všechny její inzeráty"
+          className="w-full text-sm border border-border rounded-md px-2 py-1.5 bg-background text-foreground"
+        />
+        <div className="flex gap-2">
+          <Button size="sm" onClick={save} disabled={saving} className="h-7 text-xs">
+            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+            Uložit
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs"
+            onClick={() => {
+              setText(note || "");
+              setEditing(false);
+            }}
+          >
+            <X className="w-3 h-3" />
+            Zrušit
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!note) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="mt-2 flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-muted-foreground"
+      >
+        <StickyNote className="w-3 h-3" />
+        Přidat poznámku k firmě
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1.5 text-sm">
+      <StickyNote className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+      <p className="flex-1 whitespace-pre-wrap">{note}</p>
+      <button
+        type="button"
+        onClick={() => {
+          setText(note);
+          setEditing(true);
+        }}
+        title="Upravit poznámku"
+        className="text-muted-foreground hover:text-foreground shrink-0"
+      >
+        <Pencil className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
+export default function LeadCard({ lead, salespeople, companyTags, positionCategories, onUpdate, onCompanyTagsChange, onCompanyNoteChange }) {
   const [enriching, setEnriching] = useState(false);
-  const [marking, setMarking] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [localLead, setLocalLead] = useState(lead);
+
+  // Štítky, poznámka a status firmy se mění i z jiných karet stejné firmy
+  const [prevLead, setPrevLead] = useState(lead);
+  if (lead !== prevLead) {
+    setPrevLead(lead);
+    setLocalLead(lead);
+  }
 
   async function handleEnrich() {
     setEnriching(true);
     try {
       const res = await fetch(`/api/enrich/${localLead.id}`, { method: "POST" });
       if (res.ok) {
-        const updated = await res.json();
+        const updated = { ...localLead, ...(await res.json()) };
         setLocalLead(updated);
         onUpdate?.(updated);
         setExpanded(true);
@@ -174,23 +273,48 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
     }
   }
 
-  async function handleToggleCompetitor() {
-    setMarking(true);
-    try {
-      const newVal = !localLead.is_competitor;
-      const res = await fetch("/api/competitors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company: localLead.company, is_competitor: newVal }),
-      });
-      if (res.ok) {
-        setLocalLead((prev) => ({ ...prev, is_competitor: newVal }));
-        onUpdate?.({ ...localLead, is_competitor: newVal });
-      }
-    } finally {
-      setMarking(false);
+  async function handleCompanyTagToggle(tagId, on) {
+    const res = await fetch("/api/company-tags/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ company: localLead.company, tag_id: tagId, on }),
+    });
+    if (res.ok) {
+      const { tag_ids, statuses } = await res.json();
+      onCompanyTagsChange?.(localLead.company, tag_ids, statuses);
     }
   }
+
+  async function patchPositions(body) {
+    const res = await fetch(`/api/leads/${localLead.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      // Automatické zařazení mohlo změnit i předpřiřazeného člověka
+      const assignee = salespeople?.find((p) => p.id === updated.assignee_id);
+      const merged = {
+        ...localLead,
+        ...updated,
+        assignee_name: assignee?.name ?? null,
+        assignee_color: assignee?.color ?? null,
+        assignee_initials: assignee?.initials ?? null,
+      };
+      setLocalLead(merged);
+      onUpdate?.(merged);
+    }
+  }
+
+  async function handlePositionToggle(categoryId, on) {
+    const current = localLead.position_ids || [];
+    const next = on ? [...current, categoryId] : current.filter((id) => id !== categoryId);
+    await patchPositions({ position_ids: next });
+  }
+
+  // Štítky s varováním (personální agentura, konkurence…) = firmu nechceme oslovovat
+  const warningTags = (companyTags || []).filter((t) => t.warning && localLead.tag_ids?.includes(t.id));
 
   const isEnriched = !!localLead.enriched_at;
   const hasDetail = !!localLead.job_detail && localLead.job_detail !== "expired";
@@ -213,9 +337,15 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       className={`bg-card border rounded-xl transition-shadow hover:shadow-md ${
-        isOld ? "border-border opacity-75" : "border-border"
-      } ${localLead.status === "lost" ? "opacity-60" : ""}`}
+        warningTags.length > 0 ? "border-red-300 dark:border-red-800 border-l-4" : "border-border"
+      } ${isOld ? "opacity-75" : ""} ${localLead.status === "lost" ? "opacity-60" : ""}`}
     >
+      {warningTags.length > 0 && (
+        <div className="flex items-center gap-2 px-5 py-2 rounded-t-xl bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 text-sm font-medium border-b border-red-200 dark:border-red-900">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          {warningTags.map((t) => t.name).join(" · ")} — neoslovovat
+        </div>
+      )}
       {/* ── Základní karta ── */}
       <div className="p-5">
         <div className="flex items-start gap-5">
@@ -236,6 +366,14 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${SOURCE_COLORS[localLead.source] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
                   {localLead.source}
                 </span>
+                {companyTags?.length > 0 && (
+                  <TagPicker
+                    options={companyTags}
+                    selectedIds={localLead.tag_ids || []}
+                    onToggle={handleCompanyTagToggle}
+                    label="Štítek firmy"
+                  />
+                )}
               </div>
               <a href={localLead.url} target="_blank" rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors shrink-0 mt-0.5">
@@ -244,13 +382,47 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
             </div>
 
             {/* Řádek 2: Pozice + lokace */}
-            <p className="text-sm text-muted-foreground mt-0.5">{localLead.title}</p>
+            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+              <p className="text-sm text-muted-foreground">{localLead.title}</p>
+              {positionCategories?.length > 0 && (
+                <TagPicker
+                  options={positionCategories}
+                  selectedIds={localLead.position_ids || []}
+                  onToggle={handlePositionToggle}
+                  label="Pozice"
+                  size="xs"
+                  footer={
+                    localLead.positions_manual
+                      ? (close) => (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              close();
+                              await patchPositions({ positions_auto: true });
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-left text-muted-foreground hover:bg-muted"
+                          >
+                            Vrátit automatické zařazení
+                          </button>
+                        )
+                      : undefined
+                  }
+                />
+              )}
+            </div>
             {localLead.city && (
               <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                 <MapPin className="w-3 h-3" />
                 {localLead.city}
               </p>
             )}
+
+            <CompanyNote
+              key={localLead.company_note ?? ""}
+              company={localLead.company}
+              note={localLead.company_note}
+              onSaved={(note) => onCompanyNoteChange?.(localLead.company, note)}
+            />
 
             {/* Řádek 3: IČO + web + kontakt indikátor */}
             {isEnriched && (
@@ -319,28 +491,6 @@ export default function LeadCard({ lead, salespeople, onUpdate }) {
                     {enriching ? "Analyzuji..." : "AI analýza"}
                   </Button>
                 )}
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span
-                      role="button"
-                      onClick={handleToggleCompetitor}
-                      className={`inline-flex items-center gap-1 h-7 px-2 rounded-md border text-xs font-medium transition-colors cursor-pointer ${
-                        localLead.is_competitor
-                          ? "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
-                          : "border-dashed border-border text-muted-foreground/40 hover:text-muted-foreground hover:border-border"
-                      }`}
-                    >
-                      {marking
-                        ? <Loader2 className="w-3 h-3 animate-spin" />
-                        : localLead.is_competitor
-                          ? "Konkurence"
-                          : "Konkurence?"}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {localLead.is_competitor ? "Klikni pro odznačení" : "Klikni pro označení jako konkurence"}
-                  </TooltipContent>
-                </Tooltip>
                 <select
                   value={localLead.status}
                   onChange={(e) => handleStatusChange(e.target.value)}

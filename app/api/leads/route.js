@@ -1,6 +1,10 @@
 import sql from "@/lib/db";
 import { NextResponse } from "next/server";
 
+function parseIds(value) {
+  return (value || "").split(",").map((v) => parseInt(v)).filter((n) => Number.isInteger(n));
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const assignee = searchParams.get("assignee");
@@ -9,8 +13,11 @@ export async function GET(request) {
   const source = searchParams.get("source");
   const search = searchParams.get("search");
   const regionGroup = searchParams.get("regionGroup"); // "Praha" | "Plzeňský kraj" | "Zbytek ČR"
-  // competitor: "hide" (default) | "only" | "all"
-  const competitor = searchParams.get("competitor") || "hide";
+  // štítky firem: tags = jen firmy s těmito štítky, hideTags = skrýt firmy s těmito štítky (id oddělená čárkou)
+  const tags = parseIds(searchParams.get("tags"));
+  const hideTags = parseIds(searchParams.get("hideTags"));
+  // kategorie pozic: id oddělená čárkou, "none" = nezařazené
+  const positions = searchParams.get("positions");
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
   const offset = (page - 1) * limit;
@@ -51,7 +58,7 @@ export async function GET(request) {
         conditions.push(`l.region IN ($${idx++}, $${idx++})`);
         params.push("Plzeňský kraj", "Karlovarský kraj");
       } else if (regionGroup === "Zbytek ČR") {
-        conditions.push(`l.region NOT IN ($${idx++}, $${idx++}, $${idx++}) OR l.region IS NULL`);
+        conditions.push(`(l.region NOT IN ($${idx++}, $${idx++}, $${idx++}) OR l.region IS NULL)`);
         params.push("Praha", "Plzeňský kraj", "Karlovarský kraj");
       }
     }
@@ -60,16 +67,25 @@ export async function GET(request) {
       conditions.push(`(l.company ILIKE $${idx++} OR l.title ILIKE $${idx++} OR l.description ILIKE $${idx++})`);
       const q = `%${search}%`;
       params.push(q, q, q);
-      idx += 2;
     }
 
-    if (competitor === "hide") {
-      // skrýt potvrzenou konkurenci (is_competitor = true), neklasifilované zobrazit
-      conditions.push(`(l.is_competitor IS NULL OR l.is_competitor = false)`);
-    } else if (competitor === "only") {
-      conditions.push(`l.is_competitor = true`);
+    const tagMatch = (paramIdx) =>
+      `EXISTS (SELECT 1 FROM company_tag_links t WHERE t.company_key = lower(btrim(l.company)) AND t.tag_id = ANY($${paramIdx}::int[]))`;
+    if (tags.length > 0) {
+      conditions.push(tagMatch(idx++));
+      params.push(tags);
     }
-    // competitor === "all" — žádná podmínka, vše viditelné
+    if (hideTags.length > 0) {
+      conditions.push(`NOT ${tagMatch(idx++)}`);
+      params.push(hideTags);
+    }
+
+    if (positions === "none") {
+      conditions.push(`cardinality(l.position_ids) = 0`);
+    } else if (parseIds(positions).length > 0) {
+      conditions.push(`l.position_ids && $${idx++}::int[]`);
+      params.push(parseIds(positions));
+    }
 
     const where = conditions.join(" AND ");
 
@@ -78,7 +94,12 @@ export async function GET(request) {
         l.*,
         s.name AS assignee_name,
         s.color AS assignee_color,
-        s.initials AS assignee_initials
+        s.initials AS assignee_initials,
+        ARRAY(
+          SELECT t.tag_id FROM company_tag_links t
+          WHERE t.company_key = lower(btrim(l.company)) ORDER BY t.tag_id
+        ) AS tag_ids,
+        (SELECT n.note FROM company_notes n WHERE n.company_key = lower(btrim(l.company))) AS company_note
        FROM leads l
        LEFT JOIN salespeople s ON l.assignee_id = s.id
        WHERE ${where}

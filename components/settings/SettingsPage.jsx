@@ -7,30 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Plus, Trash2, Loader2, Check, X, Pencil } from "lucide-react";
 import Link from "next/link";
-
-const PRESET_COLORS = [
-  "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e",
-  "#f97316", "#eab308", "#22c55e", "#14b8a6",
-  "#3b82f6", "#0ea5e9",
-];
-
-function ColorPicker({ value, onChange }) {
-  return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {PRESET_COLORS.map((color) => (
-        <button
-          key={color}
-          type="button"
-          onClick={() => onChange(color)}
-          className={`w-7 h-7 rounded-full transition-transform ${
-            value === color ? "scale-125 ring-2 ring-offset-1 ring-foreground" : ""
-          }`}
-          style={{ backgroundColor: color }}
-        />
-      ))}
-    </div>
-  );
-}
+import ColorPicker, { PRESET_COLORS } from "@/components/ColorPicker";
+import CompanyTagsSection from "./CompanyTagsSection";
+import PositionCategoriesSection from "./PositionCategoriesSection";
 
 function PersonRow({ person, onSaved, onDelete }) {
   const [editing, setEditing] = useState(false);
@@ -133,13 +112,19 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
   const [newInitials, setNewInitials] = useState("");
-  const [newColor, setNewColor] = useState(PRESET_COLORS[0]);
+  const [newColor, setNewColor] = useState(PRESET_COLORS[7]);
   const [saving, setSaving] = useState(false);
 
   async function fetchSalespeople() {
     setLoading(true);
     const res = await fetch("/api/salespeople");
-    if (res.ok) setSalespeople(await res.json());
+    if (res.ok) {
+      const people = await res.json();
+      setSalespeople(people);
+      // Nabídnout první barvu, kterou ještě nikdo nemá
+      const used = new Set(people.map((p) => p.color.toLowerCase()));
+      setNewColor(PRESET_COLORS.find((c) => !used.has(c)) ?? PRESET_COLORS[0]);
+    }
     setLoading(false);
   }
 
@@ -163,7 +148,6 @@ export default function SettingsPage() {
     if (res.ok) {
       setNewName("");
       setNewInitials("");
-      setNewColor(PRESET_COLORS[0]);
       await fetchSalespeople();
     }
     setSaving(false);
@@ -248,6 +232,14 @@ export default function SettingsPage() {
             </Button>
           </form>
         </section>
+
+        <Separator />
+
+        <CompanyTagsSection />
+
+        <Separator />
+
+        <PositionCategoriesSection salespeople={salespeople} />
 
         <Separator />
 

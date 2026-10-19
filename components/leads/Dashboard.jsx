@@ -9,18 +9,27 @@ import LeadCard from "./LeadCard";
 import Filters from "./Filters";
 
 const PAGE_SIZE = 20;
+const DEFAULT_FILTERS = { page: 1, tags: [], hideTags: [], positions: [] };
 
 export default function Dashboard() {
   const [leads, setLeads] = useState([]);
   const [salespeople, setSalespeople] = useState([]);
-  const [filters, setFilters] = useState({ page: 1, competitor: "all" });
+  const [companyTags, setCompanyTags] = useState([]);
+  const [positionCategories, setPositionCategories] = useState([]);
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchSalespeople = useCallback(async () => {
-    const res = await fetch("/api/salespeople");
-    if (res.ok) setSalespeople(await res.json());
+    const [people, tags, categories] = await Promise.all([
+      fetch("/api/salespeople"),
+      fetch("/api/company-tags"),
+      fetch("/api/position-categories"),
+    ]);
+    if (people.ok) setSalespeople(await people.json());
+    if (tags.ok) setCompanyTags(await tags.json());
+    if (categories.ok) setPositionCategories(await categories.json());
   }, []);
 
   const fetchLeads = useCallback(
@@ -34,7 +43,10 @@ export default function Dashboard() {
       if (filters.source) params.set("source", filters.source);
       if (filters.assignee) params.set("assignee", filters.assignee);
       if (filters.regionGroup) params.set("regionGroup", filters.regionGroup);
-      params.set("competitor", filters.competitor || "all");
+      if (filters.tags?.length) params.set("tags", filters.tags.join(","));
+      if (filters.hideTags?.length) params.set("hideTags", filters.hideTags.join(","));
+      if (filters.positions === "none") params.set("positions", "none");
+      else if (filters.positions?.length) params.set("positions", filters.positions.join(","));
       params.set("page", filters.page || 1);
       params.set("limit", PAGE_SIZE);
 
@@ -63,6 +75,12 @@ export default function Dashboard() {
 
   function handleLeadUpdate(updated) {
     setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+  }
+
+  // Štítky a poznámka firmy platí pro všechny její inzeráty
+  function updateCompany(company, changes) {
+    const key = company.trim().toLowerCase();
+    setLeads((prev) => prev.map((l) => (l.company.trim().toLowerCase() === key ? { ...l, ...changes } : l)));
   }
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -110,6 +128,9 @@ export default function Dashboard() {
           <Filters
             filters={filters}
             salespeople={salespeople}
+            companyTags={companyTags}
+            positionCategories={positionCategories}
+            defaults={DEFAULT_FILTERS}
             onChange={setFilters}
           />
         </div>
@@ -140,7 +161,30 @@ export default function Dashboard() {
                   key={lead.id}
                   lead={lead}
                   salespeople={salespeople}
+                  companyTags={companyTags}
+                  positionCategories={positionCategories}
                   onUpdate={handleLeadUpdate}
+                  onCompanyTagsChange={(company, tagIds, statuses) => {
+                    updateCompany(company, { tag_ids: tagIds });
+                    // Štítek s varováním mění status a obchodníka na „NE – neoslovovat“ (a zpět)
+                    const byId = Object.fromEntries((statuses || []).map((s) => [s.id, s]));
+                    setLeads((prev) =>
+                      prev.map((l) => {
+                        const s = byId[l.id];
+                        if (!s) return l;
+                        const person = salespeople.find((p) => p.id === s.assignee_id);
+                        return {
+                          ...l,
+                          status: s.status,
+                          assignee_id: s.assignee_id,
+                          assignee_name: person?.name ?? null,
+                          assignee_color: person?.color ?? null,
+                          assignee_initials: person?.initials ?? null,
+                        };
+                      })
+                    );
+                  }}
+                  onCompanyNoteChange={(company, note) => updateCompany(company, { company_note: note })}
                 />
               ))}
             </AnimatePresence>

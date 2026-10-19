@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Search, X, ShieldOff, Shield, Eye } from "lucide-react";
+import { Search, X, EyeOff } from "lucide-react";
 
 const SOURCES = ["jobs.cz", "prace.cz", "startupjobs.cz"];
 const STATUSES = [
@@ -10,6 +10,7 @@ const STATUSES = [
   { value: "in_progress", label: "Probíhá" },
   { value: "won", label: "Uzavřen" },
   { value: "lost", label: "Zamítnut" },
+  { value: "unwanted", label: "NE – neoslovovat" },
 ];
 
 const REGION_GROUPS = [
@@ -18,31 +19,10 @@ const REGION_GROUPS = [
   { value: "Zbytek ČR", label: "Zbytek ČR", color: "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200" },
 ];
 
-const COMPETITOR_MODES = [
-  {
-    value: "hide",
-    label: "Skrýt konkurenci",
-    icon: ShieldOff,
-    active: "bg-green-100 text-green-700 border-green-300",
-    inactive: "bg-background text-muted-foreground border-border hover:bg-muted",
-  },
-  {
-    value: "only",
-    label: "Jen konkurence",
-    icon: Shield,
-    active: "bg-red-100 text-red-700 border-red-300",
-    inactive: "bg-background text-muted-foreground border-border hover:bg-muted",
-  },
-  {
-    value: "all",
-    label: "Zobrazit vše",
-    icon: Eye,
-    active: "bg-yellow-100 text-yellow-700 border-yellow-300",
-    inactive: "bg-background text-muted-foreground border-border hover:bg-muted",
-  },
-];
+const chipBase = "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border font-medium transition-all";
+const chipIdle = "bg-background text-muted-foreground border-border hover:bg-muted";
 
-export default function Filters({ filters, salespeople, onChange }) {
+export default function Filters({ filters, salespeople, companyTags, positionCategories, defaults, onChange }) {
   function set(key, value) {
     onChange({ ...filters, [key]: value, page: 1 });
   }
@@ -52,34 +32,103 @@ export default function Filters({ filters, salespeople, onChange }) {
   }
 
   function reset() {
-    onChange({ page: 1, competitor: "all" });
+    onChange(defaults);
   }
 
-  const competitor = filters.competitor || "all";
-  const hasFilters = filters.search || filters.status || filters.source || filters.assignee || filters.regionGroup || competitor !== "all";
+  // Štítek firmy: klik cyklí vše → jen tyto firmy → skrýt tyto firmy → vše
+  function cycleTag(id) {
+    const tags = filters.tags || [];
+    const hideTags = filters.hideTags || [];
+    if (tags.includes(id)) {
+      onChange({ ...filters, tags: tags.filter((t) => t !== id), hideTags: [...hideTags, id], page: 1 });
+    } else if (hideTags.includes(id)) {
+      onChange({ ...filters, hideTags: hideTags.filter((t) => t !== id), page: 1 });
+    } else {
+      onChange({ ...filters, tags: [...tags, id], page: 1 });
+    }
+  }
+
+  function togglePosition(id) {
+    const current = Array.isArray(filters.positions) ? filters.positions : [];
+    set("positions", current.includes(id) ? current.filter((p) => p !== id) : [...current, id]);
+  }
+
+  const positionsActive = filters.positions === "none" || filters.positions?.length > 0;
+  const hasFilters =
+    filters.search || filters.status || filters.source || filters.assignee || filters.regionGroup ||
+    filters.tags?.length || filters.hideTags?.length || positionsActive;
 
   return (
     <div className="space-y-3">
-      {/* Competitor toggle */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-muted-foreground font-medium">Konkurence:</span>
-        {COMPETITOR_MODES.map((m) => {
-          const Icon = m.icon;
-          const isActive = competitor === m.value;
-          return (
-            <button
-              key={m.value}
-              onClick={() => set("competitor", m.value)}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${
-                isActive ? m.active : m.inactive
-              }`}
-            >
-              <Icon className="w-3 h-3" />
-              {m.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Štítky firem */}
+      {companyTags?.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground font-medium">Firmy:</span>
+          {companyTags.map((tag) => {
+            const only = filters.tags?.includes(tag.id);
+            const hidden = filters.hideTags?.includes(tag.id);
+            return (
+              <button
+                key={tag.id}
+                onClick={() => cycleTag(tag.id)}
+                title="Klik: jen tyto firmy → skrýt tyto firmy → vše"
+                className={`${chipBase} ${only || hidden ? "" : chipIdle} ${hidden ? "line-through" : ""}`}
+                style={
+                  only
+                    ? { backgroundColor: `${tag.color}22`, borderColor: tag.color, color: tag.color }
+                    : hidden
+                      ? { borderColor: `${tag.color}66`, color: `${tag.color}aa` }
+                      : undefined
+                }
+              >
+                {hidden ? (
+                  <EyeOff className="w-3 h-3" />
+                ) : (
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                )}
+                {hidden ? `Skrýt: ${tag.name}` : tag.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Kategorie pozic */}
+      {positionCategories?.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground font-medium">Pozice:</span>
+          <button
+            onClick={() => set("positions", [])}
+            className={`${chipBase} ${
+              !positionsActive ? "bg-foreground text-background border-foreground" : chipIdle
+            }`}
+          >
+            Všechny
+          </button>
+          {positionCategories.map((cat) => {
+            const active = Array.isArray(filters.positions) && filters.positions.includes(cat.id);
+            return (
+              <button
+                key={cat.id}
+                onClick={() => togglePosition(cat.id)}
+                className={`${chipBase} ${active ? "" : chipIdle}`}
+                style={active ? { backgroundColor: `${cat.color}22`, borderColor: cat.color, color: cat.color } : undefined}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                {cat.name}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => set("positions", filters.positions === "none" ? [] : "none")}
+            className={`${chipBase} ${
+              filters.positions === "none" ? "bg-foreground text-background border-foreground" : chipIdle
+            }`}
+          >
+            Nezařazené
+          </button>
+        </div>
+      )}
 
       {/* Region tlačítka */}
       <div className="flex items-center gap-2 flex-wrap">
