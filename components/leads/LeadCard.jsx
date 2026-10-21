@@ -366,6 +366,14 @@ export default function LeadCard({ lead, salespeople, companyTags, positionCateg
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${SOURCE_COLORS[localLead.source] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
                   {localLead.source}
                 </span>
+                {localLead.ad_closed_at && (
+                  <span
+                    title="Inzerát už na portálu není. Na stav leadu to nemá vliv."
+                    className="text-xs px-2 py-0.5 rounded-full font-medium border bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700"
+                  >
+                    Inzerát ukončen {new Date(localLead.ad_closed_at).toLocaleDateString("cs-CZ")}
+                  </span>
+                )}
                 {companyTags?.length > 0 && (
                   <TagPicker
                     options={companyTags}

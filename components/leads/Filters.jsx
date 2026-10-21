@@ -56,7 +56,7 @@ export default function Filters({ filters, salespeople, companyTags, positionCat
   const positionsActive = filters.positions === "none" || filters.positions?.length > 0;
   const hasFilters =
     filters.search || filters.status || filters.source || filters.assignee || filters.regionGroup ||
-    filters.tags?.length || filters.hideTags?.length || positionsActive;
+    filters.tags?.length || filters.hideTags?.length || positionsActive || !filters.hideClosed;
 
   return (
     <div className="space-y-3">
@@ -204,6 +204,14 @@ export default function Filters({ filters, salespeople, companyTags, positionCat
             ))}
           </select>
         )}
+
+        <button
+          onClick={() => set("hideClosed", !filters.hideClosed)}
+          title="Skryje nové leady, jejichž inzerát už na portálu není. Oslovené a rozjednané zůstávají."
+          className={`${chipBase} ${filters.hideClosed ? "bg-foreground text-background border-foreground" : chipIdle}`}
+        >
+          Jen aktivní inzeráty
+        </button>
 
         {hasFilters && (
           <button

@@ -7,6 +7,7 @@ export function middleware(request) {
   const path = request.nextUrl.pathname;
   if (
     path.startsWith("/api/scrape") ||
+    path.startsWith("/api/check-ads") ||
     path.startsWith("/api/init") ||
     path.startsWith("/api/backfill-locations") ||
     path.startsWith("/api/backfill-details")

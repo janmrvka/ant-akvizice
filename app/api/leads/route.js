@@ -18,6 +18,8 @@ export async function GET(request) {
   const hideTags = parseIds(searchParams.get("hideTags"));
   // kategorie pozic: id oddělená čárkou, "none" = nezařazené
   const positions = searchParams.get("positions");
+  // hideClosed=1 — skrýt nové leady s ukončeným inzerátem (rozjednané zůstávají)
+  const hideClosed = searchParams.get("hideClosed") === "1";
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
   const offset = (page - 1) * limit;
@@ -85,6 +87,10 @@ export async function GET(request) {
     } else if (parseIds(positions).length > 0) {
       conditions.push(`l.position_ids && $${idx++}::int[]`);
       params.push(parseIds(positions));
+    }
+
+    if (hideClosed) {
+      conditions.push(`NOT (l.ad_closed_at IS NOT NULL AND l.status = 'new')`);
     }
 
     const where = conditions.join(" AND ");

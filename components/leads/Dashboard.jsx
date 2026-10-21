@@ -9,7 +9,7 @@ import LeadCard from "./LeadCard";
 import Filters from "./Filters";
 
 const PAGE_SIZE = 20;
-const DEFAULT_FILTERS = { page: 1, tags: [], hideTags: [], positions: [] };
+const DEFAULT_FILTERS = { page: 1, tags: [], hideTags: [], positions: [], hideClosed: true };
 
 export default function Dashboard() {
   const [leads, setLeads] = useState([]);
@@ -47,6 +47,7 @@ export default function Dashboard() {
       if (filters.hideTags?.length) params.set("hideTags", filters.hideTags.join(","));
       if (filters.positions === "none") params.set("positions", "none");
       else if (filters.positions?.length) params.set("positions", filters.positions.join(","));
+      if (filters.hideClosed) params.set("hideClosed", "1");
       params.set("page", filters.page || 1);
       params.set("limit", PAGE_SIZE);
 

@@ -14,6 +14,7 @@ export async function GET(request) {
       SELECT id, url, company, source
       FROM leads
       WHERE job_detail IS NULL
+        AND ad_closed_at IS NULL
         AND source = 'jobs.cz'
       ORDER BY found_at DESC
       LIMIT ${limit}
@@ -39,10 +40,10 @@ export async function GET(request) {
         `;
         updated++;
       } else {
-        // Inzerát expiroval — označ jako expired aby ho příští běh přeskočil
+        // Inzerát expiroval — označ jako ukončený, aby ho příští běh přeskočil
         await sql`
           UPDATE leads
-          SET job_detail = 'expired', detail_fetched_at = NOW()
+          SET ad_closed_at = NOW(), ad_checked_at = NOW()
           WHERE id = ${lead.id}
         `;
         failed++;

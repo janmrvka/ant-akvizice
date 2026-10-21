@@ -25,9 +25,15 @@ export async function GET(request) {
       if (!lead.company || !lead.url) continue;
 
       const existing = await sql`
-        SELECT id FROM leads WHERE url = ${lead.url} LIMIT 1
+        SELECT id, ad_closed_at FROM leads WHERE url = ${lead.url} LIMIT 1
       `;
-      if (existing.length > 0) continue;
+      if (existing.length > 0) {
+        // Inzerát je znovu ve výpisu — firma ho obnovila
+        if (existing[0].ad_closed_at) {
+          await sql`UPDATE leads SET ad_closed_at = NULL, ad_checked_at = NOW() WHERE id = ${existing[0].id}`;
+        }
+        continue;
+      }
 
       // Firma se štítkem s varováním (agentura, konkurence) = rovnou "nechceme"
       const unwanted = await sql`
